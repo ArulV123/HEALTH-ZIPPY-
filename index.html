@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Zippy — Health</title>
+<style>
+:root{
+  --paper:#faf9f6;
+  --panel:#f0ece2;
+  --ink:#15181b;
+  --ink-dim:#5b5f63;
+  --rust:#c14a2e;
+  --line:#d8d2c2;
+  --line-strong:#b8b09a;
+  --green:#1f8b4c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:Inter,Arial,sans-serif;background:var(--paper);color:var(--ink)}
+body{min-height:100vh;background:var(--paper);padding:34px}
+.shell{max-width:1120px;margin:0 auto;padding-top:6px}
+.header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:32px}
+.kicker{font:11px/1.2 monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--rust);margin-bottom:9px}
+h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:500;letter-spacing:-.035em}
+.header-note{font:11px/1.5 monospace;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;text-align:right}
+.header-tools{display:flex;align-items:flex-end;gap:18px;position:relative}
+.info-button{width:28px;height:28px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:50%;font:600 13px/1 Inter,Arial,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;margin-bottom:2px}
+.info-button:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.status{display:flex;align-items:center;gap:8px;color:var(--green);font:11px monospace;letter-spacing:.06em;text-transform:uppercase}
+.status-dot{width:7px;height:7px;background:var(--green);border-radius:50%}
+.overview{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;margin-bottom:18px}
+.panel{background:#fff;border:1px solid var(--line);position:relative;overflow:hidden}
+.panel-main{padding:30px}
+.panel-side{padding:30px;display:flex;flex-direction:column;justify-content:space-between;min-height:250px}
+.panel-title{font:10px monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:18px}
+.score-row{display:flex;align-items:flex-end;gap:14px;margin-bottom:14px}
+.score{font-size:4.2rem;line-height:.9;font-weight:600;letter-spacing:-.05em}
+.score-max{font:12px monospace;color:var(--ink-dim);padding-bottom:5px}
+.score-bar{height:7px;background:var(--panel);overflow:hidden}
+.score-fill{height:100%;width:76%;background:var(--green);transition:width .35s ease}
+.score-caption{display:flex;justify-content:space-between;font:10px monospace;color:var(--ink-dim);margin-top:9px;text-transform:uppercase}
+.day{font:600 1.15rem/1.2 Space Grotesk,Arial,sans-serif}
+.date{font:11px monospace;color:var(--ink-dim);margin-top:7px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
+.metric{background:#fff;padding:24px;min-height:190px;position:relative}
+.metric:before{content:'';position:absolute;left:0;top:0;width:2px;height:100%;background:var(--rust);opacity:.65}
+.metric-label{font:10px monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:22px}
+.metric-value{font-size:2rem;font-weight:600;letter-spacing:-.025em}
+.metric-unit{font:11px monospace;color:var(--ink-dim);margin-left:5px}
+.metric-note{font-size:12px;line-height:1.6;color:var(--ink-dim);margin-top:9px;max-width:250px}
+.metric-bar{height:4px;background:var(--panel);margin-top:18px}
+.metric-bar span{display:block;height:100%;background:var(--ink);width:0;transition:width .35s ease}
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.list{padding:26px 30px;background:#fff;border:1px solid var(--line)}
+.list h2{font-size:1.05rem;font-weight:600;margin-bottom:18px}
+.row{display:flex;justify-content:space-between;gap:16px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13px}
+.row:last-child{border-bottom:none}
+.row span:first-child{color:var(--ink-dim)}
+.row strong{font-weight:600}
+/* ---------- polished navigation / private controls ---------- */
+.back-button{position:relative;z-index:1;display:inline-flex;align-items:center;gap:9px;min-height:40px;padding:0 15px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);font:600 10.5px/1 monospace;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 22px -18px rgba(21,24,27,.5);transition:all .2s ease;margin-bottom:22px}
+.back-button::before{content:'←';font-size:15px;line-height:1}
+.back-button:hover{background:var(--ink);border-color:var(--ink);color:var(--paper);transform:translateY(-1px)}
+
+.editor{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(21,24,27,.42);backdrop-filter:blur(6px)}
+.editor.show{display:flex}
+.editor-card[hidden]{display:none !important}
+.editor-card{width:min(900px,100%);max-height:min(760px,92vh);background:#fff;border:1px solid var(--line);box-shadow:0 30px 80px -32px rgba(21,24,27,.48);display:flex;flex-direction:column;overflow:hidden}
+.editor-title{padding:22px 24px 18px;border-bottom:1px solid var(--line);font:600 12px/1 monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink);background:#fff;flex:0 0 auto}
+.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:22px 24px;overflow:auto;min-height:0}
+.editor-field{display:flex;flex-direction:column;gap:8px}
+.editor-field label{font:10px/1.3 monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-dim)}
+.editor-field input,.editor-field select{width:100%;height:44px;padding:0 12px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:13px/1 monospace;outline:none;transition:border-color .2s,box-shadow .2s}
+.editor-field input:focus,.editor-field select:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(21,24,27,.06)}
+.editor-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--line);background:var(--paper);flex:0 0 auto}
+.editor-actions button{min-height:40px;padding:0 15px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font:600 10.5px/1 monospace;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s ease}
+.editor-actions button:hover{background:var(--rust);border-color:var(--rust)}
+.editor-actions button.secondary{background:#fff;color:var(--ink);border-color:var(--line-strong)}
+.editor-actions button.secondary:hover{background:var(--paper);border-color:var(--ink)}
+.editor-password{padding:36px 30px 32px;display:flex;flex-direction:column;align-items:flex-start}
+.editor-password-kicker{font:10px/1 monospace;letter-spacing:.12em;color:var(--rust);text-transform:uppercase;margin-bottom:12px}
+.editor-password h2{font:600 1.45rem/1.15 Space Grotesk,Arial,sans-serif;margin-bottom:9px}
+.editor-password p{font:13px/1.65 Inter,Arial,sans-serif;color:var(--ink-dim);max-width:520px;margin-bottom:22px}
+.editor-password label{font:10px/1.3 monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px}
+.editor-password input{width:100%;max-width:420px;height:46px;padding:0 13px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:600 18px/1 monospace;letter-spacing:.18em;outline:none}
+.editor-password input:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(21,24,27,.06)}
+.editor-password button{margin-top:16px;min-height:42px;padding:0 17px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font:600 10.5px/1 monospace;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s ease}
+.editor-password button:hover{background:var(--rust);border-color:var(--rust)}
+.password-error{display:none;margin-top:10px;font:10.5px/1.5 monospace;color:var(--rust)}
+.password-error.show{display:block}
+.secret-button{position:fixed;right:14px;bottom:14px;z-index:35;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--line-strong);font:700 9px/1 monospace;letter-spacing:0;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.32;transition:opacity .2s ease,color .2s ease,transform .2s ease}
+.secret-button:hover{opacity:.85;color:var(--ink);transform:scale(1.08)}
+.secret-button:focus-visible{outline:1px solid var(--rust);outline-offset:3px;opacity:.9}
+.disclaimer{margin-top:18px;padding:16px 18px;border:1px solid var(--line);background:var(--panel);font:10.5px/1.65 monospace;color:var(--ink-dim)}
+.info-overlay{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(21,24,27,.42);backdrop-filter:blur(5px)}
+.info-overlay.show{display:flex}
+.info-card{width:min(680px,100%);max-height:min(720px,90vh);overflow:auto;background:#fff;border:1px solid var(--line);box-shadow:0 30px 80px -32px rgba(21,24,27,.5)}
+.info-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--line)}
+.info-head h2{font:600 13px/1 Space Grotesk,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.info-close{width:34px;height:34px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.info-body{padding:24px}
+.info-kicker{font:10px/1 monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--rust);margin-bottom:9px}
+.info-body p{font:13.5px/1.7 Inter,Arial,sans-serif;color:var(--ink-dim);margin-bottom:18px}
+.info-list{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);margin-top:14px}
+.info-item{background:#fff;padding:15px 16px}
+.info-item strong{display:block;font:600 12.5px/1.35 Space Grotesk,Arial,sans-serif;color:var(--ink);margin-bottom:5px}
+.info-item span{display:block;font:12.5px/1.6 Inter,Arial,sans-serif;color:var(--ink-dim)}
+
+@media(max-width:820px){
+  body{padding:20px}
+  .header{align-items:flex-start;flex-direction:column}
+  .header-tools{width:100%;justify-content:space-between;align-items:flex-end;gap:12px}
+  .header-note{text-align:right}
+  .overview{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr 1fr}
+  .bottom{grid-template-columns:1fr}
+}
+@media(max-width:540px){body{padding:14px}.shell{padding-top:2px}.header{margin-bottom:24px}.header h1{font-size:2.25rem}.grid{grid-template-columns:1fr}.panel-main,.panel-side,.list{padding:22px}.metric{min-height:165px}.score{font-size:3.5rem}.back-button{min-height:38px;padding:0 12px;margin-bottom:18px}.secret-button{right:14px;bottom:14px}.editor{padding:12px}.editor-card{max-height:94vh;width:100%}.editor-password{padding:28px 20px 26px}.editor-password input{max-width:none}.editor-grid{grid-template-columns:1fr;padding:18px}.editor-actions{padding:12px;flex-wrap:wrap}.editor-actions button{flex:1 1 30%;min-width:120px}.header-tools{align-items:center}.header-note{font-size:9.5px}.info-body{padding:20px}}
+</style>
+</head>
+<body>
+<button class="back-button" id="backButton" type="button">Back</button>
+<div class="shell">
+  <header class="header">
+    <div>
+      <div class="kicker">Zippy / Health Monitor</div>
+      <h1>Movement Health</h1>
+    </div>
+    <div class="header-tools">
+      <div class="status"><span class="status-dot"></span>Approximate sensor data</div>
+      <div class="header-note" id="headerDate">Personal entry</div>
+      <button class="info-button" id="infoButton" type="button" aria-label="How these values are measured">i</button>
+    </div>
+  </header>
+
+  <section class="overview">
+    <div class="panel panel-main">
+      <div class="panel-title">Overall movement condition</div>
+      <div class="score-row"><div class="score" id="overallScore">—</div><div class="score-max">/ 100</div></div>
+      <div class="score-bar"><div class="score-fill" id="overallFill" style="width:0"></div></div>
+      <div class="score-caption"><span>Low</span><span>Typical</span><span>High</span></div>
+    </div>
+    <div class="panel panel-side">
+      <div>
+        <div class="panel-title">Current day</div>
+        <div class="day" id="dayLabel">Today</div>
+        <div class="date" id="dateLabel"></div>
+      </div>
+      <div class="header-note" style="text-align:left">Approximate readings based on IR sensing and finger movement patterns.</div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="metric"><div class="metric-label">Muscle movement</div><div><span class="metric-value" id="movement">—</span><span class="metric-unit">%</span></div><div class="metric-note">Approximate amount of detected muscle activity during movement.</div><div class="metric-bar"><span id="movementBar"></span></div></article>
+    <article class="metric"><div class="metric-label">Muscle stiffness</div><div><span class="metric-value" id="stiffness">—</span><span class="metric-unit">%</span></div><div class="metric-note">Estimated resistance or reduced ease of movement.</div><div class="metric-bar"><span id="stiffnessBar"></span></div></article>
+    <article class="metric"><div class="metric-label">Finger closure</div><div><span class="metric-value" id="closure">—</span><span class="metric-unit">%</span></div><div class="metric-note">Consistency of finger closing and opening cycles.</div><div class="metric-bar"><span id="closureBar"></span></div></article>
+    <article class="metric"><div class="metric-label">Range of movement</div><div><span class="metric-value" id="range">—</span><span class="metric-unit">%</span></div><div class="metric-note">Approximate usable movement range across monitored joints.</div><div class="metric-bar"><span id="rangeBar"></span></div></article>
+    <article class="metric"><div class="metric-label">Motion smoothness</div><div><span class="metric-value" id="smoothness">—</span><span class="metric-unit">%</span></div><div class="metric-note">How steady the detected movement appears.</div><div class="metric-bar"><span id="smoothnessBar"></span></div></article>
+    <article class="metric"><div class="metric-label">Movement cycles</div><div><span class="metric-value" id="cycles">—</span><span class="metric-unit">cycles</span></div><div class="metric-note">Approximate repeated finger and joint movement count.</div><div class="metric-bar"><span id="cyclesBar"></span></div></article>
+  </section>
+
+  <section class="bottom">
+    <div class="list">
+      <h2>Daily movement summary</h2>
+      <div class="row"><span>Active movement</span><strong id="active">—</strong></div>
+      <div class="row"><span>Finger repetitions</span><strong id="reps">—</strong></div>
+      <div class="row"><span>Rest / recovery balance</span><strong id="recovery">—</strong></div>
+      <div class="row"><span>IR signal quality</span><strong id="signal">—</strong></div>
+    </div>
+    <div class="list">
+      <h2>Today’s interpretation</h2>
+      <div class="row"><span>Movement level</span><strong id="movementLevel">—</strong></div>
+      <div class="row"><span>Stiffness level</span><strong id="stiffnessLevel">—</strong></div>
+      <div class="row"><span>Finger control</span><strong id="controlLevel">—</strong></div>
+      <div class="row"><span>Overall status</span><strong id="overallStatus">Awaiting values</strong></div>
+    </div>
+  </section>
+
+  <div class="info-overlay" id="infoOverlay" aria-hidden="true">
+    <div class="info-card" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="info-head"><h2 id="infoTitle">How these values are measured</h2><button class="info-close" id="infoClose" type="button" aria-label="Close information">&times;</button></div>
+      <div class="info-body">
+        <div class="info-kicker">Approximate movement sensing</div>
+        <p>These readings are approximate movement indicators, not medical measurements. They are derived from the Zippy arm’s movement-sensing inputs and finger movement patterns.</p>
+        <div class="info-list">
+          <div class="info-item"><strong>Forearm IR sensor</strong><span>Tracks movement changes in the forearm area and contributes to the movement, smoothness, and overall movement estimates.</span></div>
+          <div class="info-item"><strong>Two shoulder IR sensors</strong><span>Monitor forward extension and sideways movement of the arm. Their combined readings contribute to the movement and range estimates.</span></div>
+          <div class="info-item"><strong>Finger movement</strong><span>Finger closing and opening patterns contribute to finger closure, finger control, repetitions, and movement-cycle estimates.</span></div>
+          <div class="info-item"><strong>Muscle stiffness estimate</strong><span>Uses the movement pattern together with changes in detected motion consistency to produce an approximate stiffness indicator.</span></div>
+          <div class="info-item"><strong>Summary values</strong><span>Active movement, finger repetitions, recovery balance, IR signal quality, and the Today’s interpretation section are calculated from the movement data shown on this page rather than entered separately.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="editor" id="editor">
+    <div class="editor-card" id="passwordCard">
+      <div class="editor-title">Your database secrets</div>
+      <div class="editor-password">
+        <div class="editor-password-kicker">PRIVATE ACCESS</div>
+        <h2>Your database secrets</h2>
+        <p>Enter the password to access your private health values.</p>
+        <label for="privatePassword">Password</label>
+        <input id="privatePassword" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="Enter password">
+        <div class="password-error" id="passwordError">Incorrect password.</div>
+        <button id="unlockBtn" type="button">Unlock private values</button>
+      </div>
+    </div>
+    <div class="editor-card" id="privateValuesCard" hidden>
+      <div class="editor-title">Private value controls</div>
+      <div class="editor-grid">
+      <div class="editor-field"><label>Muscle movement (%)</label><input id="editMovement" type="number" min="0" max="100" placeholder="Enter value"></div>
+      <div class="editor-field"><label>Muscle stiffness (%)</label><input id="editStiffness" type="number" min="0" max="100" placeholder="Enter value"></div>
+      <div class="editor-field"><label>Finger closure (%)</label><input id="editClosure" type="number" min="0" max="100" placeholder="Enter value"></div>
+      <div class="editor-field"><label>Range of movement (%)</label><input id="editRange" type="number" min="0" max="100" placeholder="Enter value"></div>
+      <div class="editor-field"><label>Motion smoothness (%)</label><input id="editSmoothness" type="number" min="0" max="100" placeholder="Enter value"></div>
+      <div class="editor-field"><label>Movement cycles</label><input id="editCycles" type="number" min="0" placeholder="Enter value"></div>
+      <div class="editor-field" style="grid-column:1/-1"><div class="metric-note" style="margin:0;max-width:none">Active movement, finger repetitions, recovery balance, IR signal quality, and the interpretation below are calculated automatically from these movement values.</div></div>
+      </div>
+      <div class="editor-actions">
+        <button id="applyBtn" type="button">Update</button>
+        <button id="nextDayBtn" class="secondary" type="button">Next day</button>
+        <button id="closeEditorBtn" class="secondary" type="button">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="disclaimer">APPROXIMATE ESTIMATE — This screen is not a medical device and does not measure heart rate or diagnose health conditions. Values are intended as approximate movement-sensing readings from IR and finger-closure inputs.</div>
+</div>
+
+<button class="secret-button" id="secretButton" type="button" aria-label="Open private health controls">•••</button>
+
+<script>
+const BACK_URL = 'https://arulv123.github.io/ZIPPY-MAIN-PAGE-1/';
+const defaultHealth = {movement:68,stiffness:24,closure:84,range:78,smoothness:82,cycles:120,active:40,reps:155,recovery:'Good',signal:'Stable'};
+let day = parseInt(localStorage.getItem('zippyHealthDay') || '1', 10);
+if (!Number.isFinite(day) || day < 1) day = 1;
+let state = {...defaultHealth};
+try {
+  const saved = JSON.parse(localStorage.getItem('zippyHealthManualValues') || 'null');
+  if (saved && typeof saved === 'object') state = {...defaultHealth, ...saved};
+} catch (e) {}
+
+const ids = ['movement','stiffness','closure','range','smoothness','cycles','active','reps','recovery','signal'];
+function valOrDash(v, suffix=''){ return v === null || v === '' || typeof v === 'undefined' ? '—' : String(v) + suffix; }
+function levelMovement(v){ if(v===null) return '—'; return v>=72?'Above normal':v>=60?'Normal':'Lower today'; }
+function levelStiffness(v){ if(v===null) return '—'; return v<=20?'Low':v<=28?'Mild':v<=40?'Moderate':'High'; }
+function levelControl(v){ if(v===null) return '—'; const score=(Number(v)*0.7)+(Number(state.smoothness||0)*0.3); return score>=88?'Very good':score>=78?'Good':'Needs attention'; }
+function deriveData(){
+  const movement=Number(state.movement)||0, stiffness=Number(state.stiffness)||0, closure=Number(state.closure)||0, range=Number(state.range)||0, smoothness=Number(state.smoothness)||0, cycles=Number(state.cycles)||0;
+  state.active=Math.max(0, Math.round(cycles*0.25 + movement*0.15));
+  state.reps=Math.max(0, Math.round(cycles*1.15 + closure*0.2));
+  state.recovery = (stiffness<=20 && movement>=60) ? 'Very good' : (stiffness<=30 && movement>=50) ? 'Good' : (stiffness<=42) ? 'Fair' : 'Needs rest';
+  const signalScore=(smoothness*0.5)+(range*0.3)+(closure*0.2);
+  state.signal = signalScore>=88 ? 'Strong' : signalScore>=72 ? 'Stable' : 'Variable';
+}
+function render(){
+  deriveData();
+  const overallVals=[state.movement,state.closure,state.range,state.smoothness,state.stiffness];
+  const complete=overallVals.every(v=>Number.isFinite(Number(v)));
+  const overall=complete ? Math.round((+state.movement + +state.closure + +state.range + +state.smoothness + (100 - +state.stiffness))/5) : null;
+  const date=new Date(); date.setDate(date.getDate() + (day-1));
+  document.getElementById('dayLabel').textContent = day===1 ? 'Today' : (day===2 ? 'Next day' : 'Day +'+(day-1));
+  document.getElementById('dateLabel').textContent=date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('headerDate').textContent='Personal entry';
+  document.getElementById('overallScore').textContent=overall===null?'—':overall;
+  document.getElementById('overallFill').style.width=(overall===null?0:overall)+'%';
+  ids.forEach(k=>{
+    const el=document.getElementById(k);
+    const suffix=['movement','stiffness','closure','range','smoothness'].includes(k)?'%':k==='cycles'?' cycles':'';
+    if(el) el.textContent=valOrDash(state[k],suffix);
+    const bar=document.getElementById(k+'Bar');
+    if(bar) bar.style.width=(k==='cycles' ? Math.min(100,(Number(state[k])||0)/2) : (Number(state[k])||0))+'%';
+  });
+  document.getElementById('active').textContent=state.active==null?'—':state.active+' min';
+  document.getElementById('reps').textContent=state.reps==null?'—':state.reps;
+  document.getElementById('recovery').textContent=state.recovery||'—';
+  document.getElementById('signal').textContent=state.signal||'—';
+  document.getElementById('movementLevel').textContent=levelMovement(state.movement);
+  document.getElementById('stiffnessLevel').textContent=levelStiffness(state.stiffness);
+  document.getElementById('controlLevel').textContent=levelControl(state.closure);
+  document.getElementById('overallStatus').textContent=overall===null?'Awaiting values':overall>=85?'Very good':overall>=65?'Normal range':'Watch movement';
+}
+
+const PRIVATE_PASSWORD = '1234';
+function showPasswordGate(){
+  document.getElementById('passwordCard').hidden=false;
+  document.getElementById('privateValuesCard').hidden=true;
+  const input=document.getElementById('privatePassword');
+  input.value='';
+  document.getElementById('passwordError').classList.remove('show');
+  setTimeout(()=>input.focus(),40);
+}
+function unlockPrivateValues(){
+  const input=document.getElementById('privatePassword');
+  const error=document.getElementById('passwordError');
+  if(input.value===PRIVATE_PASSWORD){
+    document.getElementById('passwordCard').hidden=true;
+    document.getElementById('privateValuesCard').hidden=false;
+    error.classList.remove('show');
+    loadEditor();
+  }else{
+    error.classList.add('show');
+    input.select();
+  }
+}
+function loadEditor(){
+  ids.forEach(k=>{ const el=document.getElementById('edit'+k.charAt(0).toUpperCase()+k.slice(1)); if(el) el.value=state[k] ?? ''; });
+}
+function readEditor(){
+  const next={...state};
+  ['movement','stiffness','closure','range','smoothness','cycles'].forEach(k=>{
+    const el=document.getElementById('edit'+k.charAt(0).toUpperCase()+k.slice(1));
+    next[k]=el.value===''?null:Number(el.value);
+  });
+  state=next;
+  deriveData();
+  localStorage.setItem('zippyHealthManualValues', JSON.stringify(state));
+  render();
+}
+
+document.getElementById('backButton').addEventListener('click',()=>{ window.location.assign(BACK_URL); });
+document.getElementById('secretButton').addEventListener('click',()=>{
+  const editor=document.getElementById('editor');
+  if(editor.classList.contains('show')){
+    editor.classList.remove('show');
+    return;
+  }
+  editor.classList.add('show');
+  showPasswordGate();
+});
+document.getElementById('unlockBtn').addEventListener('click',unlockPrivateValues);
+document.getElementById('privatePassword').addEventListener('keydown',e=>{ if(e.key==='Enter') unlockPrivateValues(); });
+document.getElementById('applyBtn').addEventListener('click',readEditor);
+const infoOverlay=document.getElementById('infoOverlay');
+document.getElementById('infoButton').addEventListener('click',()=>{infoOverlay.classList.add('show');infoOverlay.setAttribute('aria-hidden','false');});
+document.getElementById('infoClose').addEventListener('click',()=>{infoOverlay.classList.remove('show');infoOverlay.setAttribute('aria-hidden','true');});
+infoOverlay.addEventListener('click',e=>{if(e.target===infoOverlay){infoOverlay.classList.remove('show');infoOverlay.setAttribute('aria-hidden','true');}});
+
+document.getElementById('nextDayBtn').addEventListener('click',()=>{ day++; localStorage.setItem('zippyHealthDay',String(day)); render(); loadEditor(); });
+document.getElementById('closeEditorBtn').addEventListener('click',()=>{ document.getElementById('editor').classList.remove('show'); });
+document.getElementById('editor').addEventListener('click',e=>{ if(e.target.id==='editor') e.currentTarget.classList.remove('show'); });
+render();
+</script>
+</body>
+</html>
